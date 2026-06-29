@@ -39,6 +39,12 @@ export function App() {
     return () => window.removeEventListener("hashchange", syncRoute);
   }, []);
 
+  useEffect(() => {
+    if (auth) {
+      api.get("/api/v1/workspace/me").catch(() => {});
+    }
+  }, [auth]);
+
   const notify = (message: string, type: ToastTone = "info") => {
     setToast({ message, type });
     window.setTimeout(() => setToast(null), 3200);

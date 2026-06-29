@@ -86,6 +86,20 @@ export function AnalyticsPage({ notify }: { notify: Notify }) {
     }
   }, []);
 
+  useEffect(() => {
+    if (tab === "word-cloud") {
+      setEntityType("issues");
+    } else if (["top-topics", "publication-volume"].includes(tab)) {
+      setEntityType("journals");
+    } else if (["emerging-topics", "research-gaps"].includes(tab)) {
+      setEntityType("subject-areas");
+    }
+    setEntityId("");
+    setSelectedEntityName("");
+    setSearchQuery("");
+    setSearchResults([]);
+  }, [tab]);
+
   // Autocomplete search
   const performSearch = async (queryText: string, type: string) => {
     setSearching(true);
@@ -162,7 +176,7 @@ export function AnalyticsPage({ notify }: { notify: Notify }) {
             <div className="autocomplete-container" style={{ flex: "1 1 300px" }}>
               <label>Select Entity Type & Search</label>
               <div style={{ display: "flex", gap: "8px", marginTop: "6px" }}>
-                <select value={entityType} onChange={(e) => changeEntityType(e.target.value)} style={{ flex: "0 0 130px", minHeight: "40px" }}>
+                <select value={entityType} onChange={(e) => changeEntityType(e.target.value)} disabled style={{ flex: "0 0 130px", minHeight: "40px", background: "var(--panel-soft)", color: "var(--muted)", cursor: "not-allowed" }}>
                   <option value="journals">Journals</option>
                   <option value="publishers">Publishers</option>
                   <option value="subject-areas">Subject Areas</option>

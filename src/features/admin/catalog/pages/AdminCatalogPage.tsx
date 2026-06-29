@@ -72,6 +72,14 @@ export function AdminCatalogPage({ notify }: { notify: Notify }) {
     try {
       // Validate and clean payload
       const payload: Record<string, any> = { ...formData };
+
+      // Convert empty GUID fields to null so backend model binding doesn't fail
+      const guidFields = ["publisherId", "subjectAreaId", "journalId", "issueId"];
+      guidFields.forEach((field) => {
+        if (payload[field] === "") {
+          payload[field] = null;
+        }
+      });
       
       // Clean empty lists or convert strings to numbers
       if (resource === "journals") {
@@ -120,12 +128,12 @@ export function AdminCatalogPage({ notify }: { notify: Notify }) {
               <input value={formData.name || ""} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Elsevier" />
             </div>
             <div className="form-group">
-              <label>Publisher Code</label>
-              <input value={formData.code || ""} onChange={(e) => setFormData({ ...formData, code: e.target.value })} placeholder="e.g. ELS" />
+              <label>Country (Optional)</label>
+              <input value={formData.country || ""} onChange={(e) => setFormData({ ...formData, country: e.target.value })} placeholder="e.g. Netherlands" />
             </div>
             <div className="form-group">
-              <label>Contact Email</label>
-              <input type="email" value={formData.email || ""} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="contact@elsevier.com" />
+              <label>Website (Optional)</label>
+              <input value={formData.website || ""} onChange={(e) => setFormData({ ...formData, website: e.target.value })} placeholder="e.g. https://www.elsevier.com" />
             </div>
           </div>
         );
@@ -326,6 +334,10 @@ export function AdminCatalogPage({ notify }: { notify: Notify }) {
             <div className="form-group">
               <label>Subject Area Code</label>
               <input value={formData.code || ""} onChange={(e) => setFormData({ ...formData, code: e.target.value })} placeholder="e.g. COMP" />
+            </div>
+            <div className="form-group">
+              <label>Description (Optional)</label>
+              <textarea value={formData.description || ""} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Subject area description..." />
             </div>
           </div>
         );

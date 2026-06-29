@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Download, RefreshCw } from "lucide-react";
-import { httpClient as api, getPagedItems } from "../../../api/httpClient";
+import { httpClient as api, getPagedItems, getApiBaseUrl } from "../../../api/httpClient";
+import { getStoredAuth } from "../../../api/tokenStorage";
 import type { Notify } from "../../../app/app.types";
 import type { ExportJob } from "../api/exportsApi";
 import { Panel } from "../../../shared/components/Panel";
@@ -14,18 +15,50 @@ export function ExportsPage({ notify }: { notify: Notify }) {
   const [format, setFormat] = useState("csv");
   const [loading, setLoading] = useState(false);
 
-  // Visual Query Builder State
-  const [exportType, setExportType] = useState("articles");
-  const [filterYear, setFilterYear] = useState("");
+  // Visual Query Builder State (aligns with C# ExportQueryConfig)
+  const [filterFromYear, setFilterFromYear] = useState("");
+  const [filterToYear, setFilterToYear] = useState("");
   const [filterJournalId, setFilterJournalId] = useState("");
-  const [filterHasKeywords, setFilterHasKeywords] = useState("");
-  const [filterPublisherId, setFilterPublisherId] = useState("");
-  const [filterSubjectAreaId, setFilterSubjectAreaId] = useState("");
+  const [filterKeywords, setFilterKeywords] = useState("");
 
   // Dropdown Cache
   const [journals, setJournals] = useState<any[]>([]);
-  const [publishers, setPublishers] = useState<any[]>([]);
-  const [subjectAreas, setSubjectAreas] = useState<any[]>([]);
+
+  const downloadFile = async (fileId: string, ext: string) => {
+    try {
+      const baseUrl = getApiBaseUrl();
+      const auth = getStoredAuth();
+      const headers = new Headers();
+      if (auth?.accessToken) {
+        headers.set("Authorization", `Bearer ${auth.accessToken}`);
+      }
+
+      const res = await fetch(`${baseUrl}/api/v1/exports/files/${fileId}`, { headers });
+      if (!res.ok) throw new Error(`Server returned status ${res.status}`);
+
+      // Extract actual filename from Content-Disposition header (e.g. scitrend-export-xxx.csv)
+      const contentDisposition = res.headers.get("content-disposition");
+      let filename = `scitrend-export-${fileId}.${ext}`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^";]+)"?/);
+        if (match && match[1]) {
+          filename = match[1].trim();
+        }
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      notify("Could not download file: " + errorMessage(error), "error");
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -40,14 +73,8 @@ export function ExportsPage({ notify }: { notify: Notify }) {
 
   const loadOptions = async () => {
     try {
-      const [jRes, pubRes, subRes] = await Promise.all([
-        api.get<any>("/api/v1/journals", { page: 1, size: 100 }),
-        api.get<any>("/api/v1/publishers", { page: 1, size: 100 }),
-        api.get<any>("/api/v1/subject-areas", { page: 1, size: 100 })
-      ]);
+      const jRes = await api.get<any>("/api/v1/journals", { page: 1, size: 100 });
       setJournals(getPagedItems(jRes));
-      setPublishers(getPagedItems(pubRes));
-      setSubjectAreas(getPagedItems(subRes));
     } catch (err) {
       // Non-fatal dropdown loading error
     }
@@ -60,23 +87,19 @@ export function ExportsPage({ notify }: { notify: Notify }) {
 
   const create = async () => {
     try {
-      const filters: Record<string, any> = {};
-      
-      if (exportType === "articles") {
-        if (filterYear) filters.year = Number(filterYear);
-        if (filterJournalId) filters.journalId = filterJournalId;
-        if (filterHasKeywords !== "") filters.hasKeywords = filterHasKeywords === "true";
-      } else if (exportType === "journals") {
-        if (filterPublisherId) filters.publisherId = filterPublisherId;
-        if (filterSubjectAreaId) filters.subjectAreaId = filterSubjectAreaId;
-      }
-
       const query = {
-        type: exportType,
-        filters
+        keywords: filterKeywords ? filterKeywords.split(",").map(k => k.trim()).filter(Boolean) : [],
+        fromYear: filterFromYear ? Number(filterFromYear) : null,
+        toYear: filterToYear ? Number(filterToYear) : null,
+        journalId: filterJournalId || null
       };
 
-      await api.post("/api/v1/exports", { format, query });
+      const payload = {
+        format: format.toUpperCase(), // Backend expects "CSV" or "XLSX"
+        query
+      };
+
+      await api.post("/api/v1/exports", payload);
       notify("Export job created successfully.", "success");
       load();
     } catch (error) {
@@ -88,73 +111,40 @@ export function ExportsPage({ notify }: { notify: Notify }) {
     <section className="page-stack">
       <Panel title="Create Export">
         <div className="query-builder">
-          <h3 className="query-builder-title">Export Options & Filters</h3>
+          <h3 className="query-builder-title">Export Articles Options & Filters</h3>
           <div className="query-builder-grid">
             <div className="form-group">
               <label>Export Format</label>
               <select value={format} onChange={(e) => setFormat(e.target.value)}>
                 <option value="csv">CSV Spreadsheet</option>
-                <option value="xlsx">Excel File (XLSX)</option>
+                <option value="excel">Excel File (XLSX)</option>
               </select>
             </div>
             
             <div className="form-group">
-              <label>Data Entity Type</label>
-              <select value={exportType} onChange={(e) => setExportType(e.target.value)}>
-                <option value="articles">Articles</option>
-                <option value="journals">Journals</option>
-                <option value="keywords">Keywords</option>
+              <label>Filter by Journal</label>
+              <select value={filterJournalId} onChange={(e) => setFilterJournalId(e.target.value)}>
+                <option value="">-- All Journals --</option>
+                {journals.map((j) => (
+                  <option key={j.id} value={j.id}>{j.title}</option>
+                ))}
               </select>
             </div>
 
-            {exportType === "articles" && (
-              <>
-                <div className="form-group">
-                  <label>Filter Year</label>
-                  <input type="number" value={filterYear} onChange={(e) => setFilterYear(e.target.value)} placeholder="e.g. 2025" />
-                </div>
-                <div className="form-group">
-                  <label>Filter Journal</label>
-                  <select value={filterJournalId} onChange={(e) => setFilterJournalId(e.target.value)}>
-                    <option value="">-- All Journals --</option>
-                    {journals.map((j) => (
-                      <option key={j.id} value={j.id}>{j.title}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Keywords Status</label>
-                  <select value={filterHasKeywords} onChange={(e) => setFilterHasKeywords(e.target.value)}>
-                    <option value="">-- Any --</option>
-                    <option value="true">Has Keywords</option>
-                    <option value="false">Missing Keywords</option>
-                  </select>
-                </div>
-              </>
-            )}
+            <div className="form-group">
+              <label>Publication Year (From)</label>
+              <input type="number" value={filterFromYear} onChange={(e) => setFilterFromYear(e.target.value)} placeholder="e.g. 2018" />
+            </div>
 
-            {exportType === "journals" && (
-              <>
-                <div className="form-group">
-                  <label>Filter Publisher</label>
-                  <select value={filterPublisherId} onChange={(e) => setFilterPublisherId(e.target.value)}>
-                    <option value="">-- All Publishers --</option>
-                    {publishers.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Filter Subject Area</label>
-                  <select value={filterSubjectAreaId} onChange={(e) => setFilterSubjectAreaId(e.target.value)}>
-                    <option value="">-- All Subject Areas --</option>
-                    {subjectAreas.map((sa) => (
-                      <option key={sa.id} value={sa.id}>{sa.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
+            <div className="form-group">
+              <label>Publication Year (To)</label>
+              <input type="number" value={filterToYear} onChange={(e) => setFilterToYear(e.target.value)} placeholder="e.g. 2025" />
+            </div>
+
+            <div className="form-group" style={{ gridColumn: "span 2" }}>
+              <label>Keywords Filter (comma separated, e.g. artificial intelligence, machine learning)</label>
+              <input value={filterKeywords} onChange={(e) => setFilterKeywords(e.target.value)} placeholder="Leave blank to export all keywords..." />
+            </div>
           </div>
           
           <button className="primary-button" style={{ marginTop: "12px", alignSelf: "flex-end" }} onClick={create}>
@@ -172,7 +162,7 @@ export function ExportsPage({ notify }: { notify: Notify }) {
             { key: "format", label: "Format", render: (row) => <span style={{ textTransform: "uppercase", fontWeight: 700 }}>{String(row.format)}</span> },
             { key: "status", label: "Status", render: (row) => <Badge value={String(row.status)} /> },
             { key: "createdAt", label: "Created", render: (row) => row.createdAt ? new Date(row.createdAt as string).toLocaleString() : "Unknown" },
-            { key: "fileId", label: "Action", render: (row) => row.fileId ? <a className="icon-text" href={api.downloadUrl(`/api/v1/exports/files/${row.fileId}`)}><Download size={16} />Download</a> : null }
+            { key: "fileId", label: "Action", render: (row) => row.fileId ? <button className="icon-text" onClick={() => downloadFile(String(row.fileId), String(row.format).toLowerCase())} style={{ minHeight: "34px" }}><Download size={15} />Download</button> : null }
           ]}
         />
       </Panel>
