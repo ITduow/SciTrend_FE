@@ -1209,3 +1209,265 @@ tr:last-child td {
     grid-column: 1 / -1;
   }
 }
+
+/* ─── Premium Additions ────────────────────────────────────────────────── */
+
+.transition-all {
+  transition: var(--transition);
+}
+
+.panel, .metric, button, input, select, textarea, .table-wrap {
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.panel:hover {
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+}
+
+/* Interactive Capsules for Word Cloud */
+.word-capsule-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+}
+
+.word-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--primary-light);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  color: var(--primary-dark);
+  font-weight: 600;
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.word-capsule:hover {
+  transform: translateY(-2px) scale(1.05);
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.word-capsule small {
+  opacity: 0.8;
+  font-weight: 400;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+/* Autocomplete Entity Search */
+.autocomplete-container {
+  position: relative;
+  width: 100%;
+}
+
+.autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  margin-top: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--border-radius-sm);
+  box-shadow: var(--shadow);
+}
+
+.autocomplete-item {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text);
+  transition: var(--transition);
+  border-bottom: 1px solid var(--panel-soft);
+}
+
+.autocomplete-item:last-child {
+  border-bottom: 0;
+}
+
+.autocomplete-item:hover {
+  background: var(--panel-soft);
+  color: var(--primary-dark);
+}
+
+.autocomplete-loading {
+  padding: 10px 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Visual Catalog Form */
+.catalog-form {
+  display: grid;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.catalog-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.form-group {
+  display: grid;
+  gap: 6px;
+}
+
+.form-group label {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Query Builder for Exports */
+.query-builder {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--border-radius);
+  margin-bottom: 16px;
+}
+
+.query-builder-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.query-builder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+/* Chart Interactive SVG enhancements */
+.chart-box svg {
+  overflow: visible;
+}
+
+.chart-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke-dasharray 0.5s ease;
+}
+
+.chart-area-under {
+  fill-opacity: 0.08;
+  pointer-events: none;
+}
+
+.chart-dot {
+  stroke-width: 2;
+  fill: var(--panel);
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.chart-dot:hover {
+  r: 7;
+  stroke-width: 3;
+}
+
+.grid-line {
+  stroke: var(--line);
+  stroke-dasharray: 4 4;
+}
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 100;
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(4px);
+  color: white;
+  border-radius: var(--border-radius-sm);
+  font-size: 12px;
+  pointer-events: none;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chart-tooltip strong {
+  font-size: 13px;
+  color: var(--primary);
+}
+
+/* Real SVG Bar Chart styles */
+.svg-bar-chart {
+  display: grid;
+  gap: 14px;
+  padding: 4px;
+}
+
+.svg-bar-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: 16px;
+}
+
+.svg-bar-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.svg-bar-container {
+  height: 20px;
+  background: var(--panel-soft);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.svg-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary) 0%, #60a5fa 100%);
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.svg-bar-fill:hover {
+  filter: brightness(1.1);
+}
+
+.svg-bar-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  text-align: right;
+}
+
+/* Workspace actions */
+.workspace-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+

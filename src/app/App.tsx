@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Activity, LogOut, Menu, UserRound } from "lucide-react";
 import { httpClient as api } from "../api/httpClient";
 import { getStoredAuth, setStoredAuth } from "../api/tokenStorage";
@@ -19,9 +19,25 @@ import { SettingsPage } from "../features/settings/pages/SettingsPage";
 
 export function App() {
   const [auth, setAuth] = useState(getStoredAuth());
-  const [route, setRoute] = useState<RouteKey>("dashboard");
+  const [route, setRoute] = useState<RouteKey>(() => {
+    const hash = window.location.hash.replace("#", "") as RouteKey;
+    return ["dashboard", "articles", "journals", "analytics", "workspace", "exports", "admin-ingestion", "admin-catalog", "settings"].includes(hash) 
+      ? hash 
+      : "dashboard";
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
+
+  useEffect(() => {
+    const syncRoute = () => {
+      const hash = window.location.hash.replace("#", "") as RouteKey;
+      if (["dashboard", "articles", "journals", "analytics", "workspace", "exports", "admin-ingestion", "admin-catalog", "settings"].includes(hash)) {
+        setRoute(hash);
+      }
+    };
+    window.addEventListener("hashchange", syncRoute);
+    return () => window.removeEventListener("hashchange", syncRoute);
+  }, []);
 
   const notify = (message: string, type: ToastTone = "info") => {
     setToast({ message, type });
@@ -36,7 +52,7 @@ export function App() {
     }
     setStoredAuth(null);
     setAuth(null);
-    setRoute("dashboard");
+    window.location.hash = "dashboard";
   };
 
   if (!auth) {
@@ -71,7 +87,7 @@ export function App() {
               key={item.key}
               className={route === item.key ? "active" : ""}
               onClick={() => {
-                setRoute(item.key);
+                window.location.hash = item.key;
                 setSidebarOpen(false);
               }}
               title={item.label}
