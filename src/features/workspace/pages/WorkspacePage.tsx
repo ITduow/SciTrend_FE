@@ -26,7 +26,20 @@ export function WorkspacePage({ notify }: { notify: Notify }) {
         api.get<any[]>("/api/v1/workspace/bookmarks"),
         api.get<any[]>("/api/v1/workspace/saved-charts")
       ]);
-      setBookmarks(bookmarkData);
+
+      // Enrich bookmarks with titles from Catalog service
+      const enrichedBookmarks = await Promise.all(
+        bookmarkData.map(async (b) => {
+          try {
+            const article = await api.get<any>(`/api/v1/articles/${b.articleId}`);
+            return { ...b, articleTitle: article.title };
+          } catch {
+            return { ...b, articleTitle: "Unknown Article" };
+          }
+        })
+      );
+
+      setBookmarks(enrichedBookmarks);
       setCharts(chartData);
     } catch (error) {
       notify(errorMessage(error), "error");
@@ -82,68 +95,94 @@ export function WorkspacePage({ notify }: { notify: Notify }) {
 
   return (
     <div className="page-stack">
+      {/* Statistics Cards */}
+      <div className="metric-grid" style={{ marginBottom: "8px" }}>
+        <div className="metric">
+          <div style={{ color: "var(--primary)" }}><Eye size={18} /></div>
+          <span>Bookmarked Articles</span>
+          <strong>{bookmarks.length}</strong>
+        </div>
+        <div className="metric">
+          <div style={{ color: "var(--success)" }}><Play size={18} fill="currentColor" /></div>
+          <span>Saved Charts</span>
+          <strong>{charts.length}</strong>
+        </div>
+        <div className="metric" style={{ gridColumn: "span 2" }}>
+          <div><RefreshCw size={18} /></div>
+          <span>Workspace Session Status</span>
+          <strong style={{ fontSize: "20px", marginTop: "10px", color: "var(--success)" }}>Sync Active</strong>
+        </div>
+      </div>
+
       <div className="two-column">
         <Panel title="Bookmarked Articles" actions={<button className="icon-text" onClick={load}><RefreshCw size={16} />Refresh</button>}>
-          <DataTable
-            loading={loading}
-            rows={toTableRows(bookmarks)}
-            columns={[
-              {
-                key: "articleTitle",
-                label: "Title",
-                render: (row) => (
-                  <button className="link-button" onClick={() => viewArticleDetails(String(row.articleId))} style={{ fontWeight: 600 }}>
-                    {String(row.articleTitle || "Untitled Article")}
-                  </button>
-                )
-              },
-              { key: "note", label: "Note", render: (row) => String(row.note || "No note") },
-              { key: "createdAt", label: "Bookmarked At", render: (row) => row.createdAt ? new Date(row.createdAt as string).toLocaleDateString() : "Unknown" },
-              {
-                key: "id",
-                label: "Actions",
-                render: (row) => (
-                  <div className="workspace-actions">
-                    <button className="icon-button" onClick={() => viewArticleDetails(String(row.articleId))} title="View Details"><Eye size={15} /></button>
-                    <button className="icon-button danger" onClick={() => deleteBookmark(String(row.articleId))} title="Remove Bookmark"><Trash2 size={15} /></button>
+          {bookmarks.length === 0 ? (
+            <div className="empty-state">No bookmarked articles. Save papers from the Articles browser.</div>
+          ) : (
+            <div className="workspace-item-list">
+              {bookmarks.map((row) => (
+                <div key={row.id} className="workspace-item-card">
+                  <div className="workspace-item-main">
+                    <button className="workspace-item-title" onClick={() => viewArticleDetails(String(row.articleId))}>
+                      {String(row.articleTitle || "Untitled Article")}
+                    </button>
+                    {row.note && (
+                      <p className="workspace-item-note">
+                        <strong>Note:</strong> {String(row.note)}
+                      </p>
+                    )}
+                    <span className="workspace-item-date">
+                      Bookmarked on {row.createdAt ? new Date(row.createdAt as string).toLocaleDateString() : "Unknown"}
+                    </span>
                   </div>
-                )
-              }
-            ]}
-          />
+                  <div className="workspace-item-actions">
+                    <button className="icon-button" onClick={() => viewArticleDetails(String(row.articleId))} title="View Details">
+                      <Eye size={15} />
+                    </button>
+                    <button className="icon-button danger" onClick={() => deleteBookmark(String(row.articleId))} title="Remove Bookmark">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Panel>
 
         <Panel title="Saved Charts">
-          <DataTable
-            loading={loading}
-            rows={toTableRows(charts)}
-            columns={[
-              { key: "name", label: "Name", render: (row) => <strong style={{ color: "var(--text)" }}>{String(row.name)}</strong> },
-              {
-                key: "queryConfig",
-                label: "Chart Query",
-                render: (row) => {
-                  const cfg = typeof row.queryConfig === "string" ? JSON.parse(row.queryConfig) : (row.queryConfig as any);
-                  return cfg ? <span style={{ textTransform: "capitalize", fontSize: "12px", color: "var(--muted)" }}>Type: {cfg.tab || "trends"}</span> : "None";
-                }
-              },
-              { key: "createdAt", label: "Saved At", render: (row) => row.createdAt ? new Date(row.createdAt as string).toLocaleDateString() : "Unknown" },
-              {
-                key: "id",
-                label: "Actions",
-                render: (row) => (
-                  <div className="workspace-actions">
-                    <button className="icon-text" onClick={() => loadChart(row)} title="Load Analysis" style={{ minHeight: "30px", fontSize: "12px" }}>
-                      <Play size={13} fill="currentColor" /> Load
-                    </button>
-                    <button className="icon-button danger" onClick={() => deleteChart(String(row.id))} title="Delete Chart" style={{ minHeight: "30px", width: "30px" }}>
-                      <Trash2 size={13} />
-                    </button>
+          {charts.length === 0 ? (
+            <div className="empty-state">No saved charts. Run an analysis and save it.</div>
+          ) : (
+            <div className="workspace-item-list">
+              {charts.map((row) => {
+                const cfg = typeof row.queryConfig === "string" ? JSON.parse(row.queryConfig) : (row.queryConfig as any);
+                const type = cfg?.tab || "trends";
+                return (
+                  <div key={row.id} className="workspace-item-card">
+                    <div className="workspace-item-main">
+                      <strong className="workspace-item-title-plain">{String(row.name)}</strong>
+                      <div className="workspace-item-meta">
+                        <span className="status active" style={{ textTransform: "capitalize", fontSize: "11px" }}>
+                          Type: {type}
+                        </span>
+                        <span className="workspace-item-date">
+                          Saved on {row.createdAt ? new Date(row.createdAt as string).toLocaleDateString() : "Unknown"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="workspace-item-actions">
+                      <button className="icon-text" onClick={() => loadChart(row)} title="Load Analysis" style={{ minHeight: "34px", fontSize: "12px", background: "var(--primary)", color: "white", borderColor: "transparent" }}>
+                        <Play size={13} fill="currentColor" /> Load
+                      </button>
+                      <button className="icon-button danger" onClick={() => deleteChart(String(row.id))} title="Delete Chart" style={{ minHeight: "34px", width: "34px" }}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
-                )
-              }
-            ]}
-          />
+                );
+              })}
+            </div>
+          )}
         </Panel>
       </div>
 
